@@ -39,6 +39,8 @@ contract Escrow {
     uint256 public escrowFeePercent;
     uint256 public escrowBalance;
 
+    uint256 public shippingBalance;
+
 
     // products
     uint256 public totalItems = 0;
@@ -78,9 +80,36 @@ contract Escrow {
 
     mapping(uint256 => OrderStruct) public orders;
 
-    // create order
-    function createOrder(uint256 _itemId) public {
+    // events
+    event OrderCreated(uint256 itemId, uint256 amount);
+
+
+    // create order on item purchase
+    function createOrder(uint256 _itemId) public payable {
+
+        require(items[_itemId].itemId > 0, "Item does not exist");
+        require(items[_itemId].itemId <= totalItems, "Item does not exist");
+
+        // calculate cost of the item + shipping + escrow fee
+        uint256 escrowFee = (items[_itemId].amount * escrowFeePercent) / 100;
+        uint256 total_cost = items[_itemId].amount + items[_itemId].shipping_amount + escrowFee;
+
+        require(msg.value == total_cost, string(abi.encodePacked("Incorrect amount sent, please send ", total_cost, " wei")));
+
+        // create order
         orders[_itemId] = OrderStruct(items[_itemId], msg.sender, items[_itemId].seller, address(0), Status.OPEN);
+
+        // calculate buyer deposit
+        buyerDeposit = msg.value;
+
+        // add to escrow balance
+        escrowBalance += escrowFee;
+
+        // add shipping balance
+        shippingBalance += items[_itemId].shipping_amount;
+
+        // return success message with item and amount
+        emit OrderCreated(_itemId, msg.value);
     }
 
     // view order
@@ -108,6 +137,12 @@ contract Escrow {
         );
 
         return order;
+    }
+
+    // return total cost of item
+    function totalCost(uint256 _itemId) public view returns (uint256) {
+        // get cost of item
+        return items[_itemId].amount + items[_itemId].shipping_amount + (items[_itemId].amount * escrowFeePercent) / 100;
     }
 
 
