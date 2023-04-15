@@ -55,6 +55,8 @@ contract Escrow {
         escrowFeePercent = _escrowFee;
         // escrowFeePercent = 5;
 
+
+
     } 
 
     // return total cost of item
@@ -148,7 +150,57 @@ contract Escrow {
         return order;
     }
 
-    
+
+    // confirm order by seller using order id by paying the shipping charges
+    function confirmOrder(uint256 _itemId) public payable {
+        require(orders[_itemId].item.itemId > 0, "Order does not exist");
+        require(orders[_itemId].item.itemId <= totalItems, "Order does not exist");
+        require(orders[_itemId].status == Status.OPEN, "Order is not open");
+        require(orders[_itemId].item.seller == msg.sender, "Only seller can confirm order");
+
+
+        // check if shipping amount is paid
+        require(msg.value == orders[_itemId].item.shipping_amount, string(abi.encodePacked("Incorrect amount sent, please send ", orders[_itemId].item.shipping_amount, " wei")));
+
+        // update order status
+        orders[_itemId].status = Status.CONFIRMED;
+
+        // update shipping balance
+        shippingBalance += orders[_itemId].item.shipping_amount;
+
+        // update seller deposit
+        sellerDeposit += msg.value;
+
+        // update total confirmed
+        totalConfirmed++;
+    }
+
+    // cancel order by buyer using order id
+    function cancelOrder(uint256 _itemId) public payable {
+        require(orders[_itemId].item.itemId > 0, "Order does not exist");
+        require(orders[_itemId].item.itemId <= totalItems, "Order does not exist");
+        require(orders[_itemId].buyer == msg.sender, "Only buyer can cancel order");
+
+        // update order status
+        orders[_itemId].status = Status.CANCELLED;
+
+
+        // total cost of item
+        uint256 total_cost = totalCost(_itemId);
+
+        // update buyer deposit
+        buyerDeposit -= total_cost;
+
+        // refund buyer
+        payable(orders[_itemId].buyer).transfer(total_cost);
+
+        // update seller deposit
+        sellerDeposit -= orders[_itemId].item.shipping_amount;
+        
+        // refund seller
+        payable(orders[_itemId].item.seller).transfer(orders[_itemId].item.shipping_amount);
+
+    }
 
 
 }
