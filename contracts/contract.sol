@@ -10,9 +10,8 @@ contract Escrow {
         uint256 itemId;
         uint256 amount;
         uint256 timestamp;
-        address owner;
+        address seller;
         Status status;
-        bool confirmed;
     }
 
     enum Status {
@@ -37,7 +36,7 @@ contract Escrow {
     uint256 public buyerDeposit;
     uint256 public sellerDeposit;
 
-    uint256 public escrowFee;
+    uint256 public escrowFeePercent;
     uint256 public escrowBalance;
 
 
@@ -51,7 +50,19 @@ contract Escrow {
     constructor (uint256 _escrowFee) {
         // constructor
         escrow = msg.sender;
-        escrowFee = _escrowFee;
+        escrowFeePercent = _escrowFee;
+        // escrowFeePercent = 5;
+
     } 
 
+    // create items
+    function createItem(uint256 _amount) public {
+        totalItems++;
+        items[totalItems] = ItemStruct(totalItems, _amount, block.timestamp, msg.sender, Status.OPEN);
+    }
+
+    // view items
+    function viewItem(uint256 _itemId) public view returns (uint256, uint256, uint256, address, Status) {
+        return (items[_itemId].itemId, items[_itemId].amount, items[_itemId].timestamp, items[_itemId].seller, items[_itemId].status);
+    }
 }
