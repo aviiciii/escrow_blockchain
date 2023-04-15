@@ -57,9 +57,18 @@ contract Escrow {
 
     } 
 
+    // return total cost of item
+    function totalCost(uint256 _itemId) public view returns (uint256) {
+        // get cost of item
+        return items[_itemId].amount + items[_itemId].shipping_amount + (items[_itemId].amount * escrowFeePercent) / 100;
+    }
+
+
     // create items
     function createItem(uint256 _amount, uint256 _shippingamount) public {
         totalItems++;
+        // calculate totalcost
+
         items[totalItems] = ItemStruct(totalItems, _amount, _shippingamount, block.timestamp, msg.sender);
     }
 
@@ -116,7 +125,7 @@ contract Escrow {
     struct OrderDetails {
         uint256 itemId;
         uint256 amount;
-        uint256 shipping_amount;
+        uint256 shipping_amount; 
         uint256 timestamp;
         address seller;
         address buyer;
@@ -139,12 +148,7 @@ contract Escrow {
         return order;
     }
 
-    // return total cost of item
-    function totalCost(uint256 _itemId) public view returns (uint256) {
-        // get cost of item
-        return items[_itemId].amount + items[_itemId].shipping_amount + (items[_itemId].amount * escrowFeePercent) / 100;
-    }
-
+    
 
 
 }
