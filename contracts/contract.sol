@@ -84,8 +84,8 @@ contract Escrow {
     }
 
     // view order
-    function viewOrder(uint256 _itemId) public view returns (uint256, uint256, uint256, uint256, address, Status, address, address, address, Status) {
-        return (orders[_itemId].item.itemId, orders[_itemId].item.amount, orders[_itemId].item.shipping_amount, orders[_itemId].item.timestamp, orders[_itemId].item.seller, orders[_itemId].item.status, orders[_itemId].buyer, orders[_itemId].seller, orders[_itemId].shipper, orders[_itemId].status);
+    function viewOrder(uint256 _itemId) public view returns (uint256, uint256, uint256, uint256, address, address, address, Status) {
+        return (orders[_itemId].item.itemId, orders[_itemId].item.amount, orders[_itemId].item.shipping_amount, orders[_itemId].item.timestamp, orders[_itemId].item.seller, orders[_itemId].buyer, orders[_itemId].shipper, orders[_itemId].status);
     }
 
 
