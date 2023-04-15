@@ -84,8 +84,30 @@ contract Escrow {
     }
 
     // view order
-    function viewOrder(uint256 _itemId) public view returns (uint256, uint256, uint256, uint256, address, address, address, Status) {
-        return (orders[_itemId].item.itemId, orders[_itemId].item.amount, orders[_itemId].item.shipping_amount, orders[_itemId].item.timestamp, orders[_itemId].item.seller, orders[_itemId].buyer, orders[_itemId].shipper, orders[_itemId].status);
+    struct OrderDetails {
+        uint256 itemId;
+        uint256 amount;
+        uint256 shipping_amount;
+        uint256 timestamp;
+        address seller;
+        address buyer;
+        address shipper;
+        Status status;
+    }
+
+    function viewOrder(uint256 _itemId) public view returns (OrderDetails memory) {
+        OrderDetails memory order = OrderDetails(
+            orders[_itemId].item.itemId,
+            orders[_itemId].item.amount,
+            orders[_itemId].item.shipping_amount,
+            orders[_itemId].item.timestamp,
+            orders[_itemId].item.seller,
+            orders[_itemId].buyer,
+            orders[_itemId].shipper,
+            orders[_itemId].status
+        );
+
+        return order;
     }
 
 
