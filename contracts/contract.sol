@@ -33,12 +33,15 @@ contract Escrow {
     address public shipper;
     address public escrow;
 
+    // Deposits
     uint256 public buyerDeposit;
     uint256 public sellerDeposit;
 
+    // fees
     uint256 public escrowFeePercent;
+    
+    // balances in wallet (after transactions)
     uint256 public escrowBalance;
-
     uint256 public shippingBalance;
 
 
