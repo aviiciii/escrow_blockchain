@@ -38,15 +38,15 @@ contract Escrow {
 
     // state variables
 
-    address public shipperAddress;
-    address public escrow;
+    address shipperAddress;
+    address escrow;
 
     // Deposits
     uint256 public buyerDeposit;
     uint256 public sellerDeposit;
 
     // fees
-    uint256 public escrowFeePercent;
+    uint256 escrowFeePercent;
     
     // balances in wallet (after transactions)
     uint256 public escrowBalance;
@@ -225,9 +225,9 @@ contract Escrow {
     }
 
     // deliver order by shipper using order id
-    function deliveredOrder(uint256 _orderId) public {
-        require(orders[_orderId].item.itemId > 0, "Order does not exist");
-        require(orders[_orderId].item.itemId <= totalItems, "Order does not exist");
+    function deliveredOrder(uint256 _orderId) public payable {
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalItems, "Order does not exist");
         require(orders[_orderId].shipper == msg.sender, "Only shipper can deliver order");
         require(orders[_orderId].status == Status.CONFIRMED, "Order is not confirmed");
 
@@ -235,6 +235,8 @@ contract Escrow {
         orders[_orderId].status = Status.DELIVERED;
 
         // pay shipper
+        // check contract balance
+
         payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
 
         // pay seller
@@ -244,8 +246,8 @@ contract Escrow {
         escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
 
         // update deposit
-        sellerDeposit -= orders[_orderId].item.amount;
-        buyerDeposit -= orders[_orderId].item.shipping_amount;
+        sellerDeposit -= orders[_orderId].item.shipping_amount;
+        buyerDeposit -= orders[_orderId].item.amount;
 
 
         // update total confirmed
