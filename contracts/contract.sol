@@ -30,8 +30,9 @@ contract Escrow {
         CANCELLED,
         REJECTED,
         DELIVERED,
-        DISPUTED_BY_BUYER, // BUYER MISTAKE
-        DISPUTED_BY_SELLER // SELLER MISTAKE
+        DISPUTED,
+        DISPUTED_RESOLVED_BUYER_MISTAKE,
+        DISPUTED_RESOLVED_SELLER_MISTAKE
     }
 
 
@@ -212,15 +213,15 @@ contract Escrow {
         // update order status
         orders[_orderId].status = Status.DELIVERED;
         
-        // pay shipper the shipping amount
-        payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
+        // // pay shipper the shipping amount
+        // payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
 
-        // pay seller the item amount and shipping amount (deposit)
-        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
+        // // pay seller the item amount and shipping amount (deposit)
+        // payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
         
-        // update deposit
-        sellerDeposit -= orders[_orderId].item.shipping_amount;
-        buyerDeposit -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
+        // // update deposit
+        // sellerDeposit -= orders[_orderId].item.shipping_amount;
+        // buyerDeposit -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
 
         // update total confirmed
         totalConfirmed--;
@@ -331,7 +332,7 @@ contract Escrow {
         require(orders[_orderId].status == Status.OPEN || orders[_orderId].status == Status.CONFIRMED, "Order cannot be disputed");
 
         // update order status
-        orders[_orderId].status = Status.DISPUTED_BY_BUYER;
+        orders[_orderId].status = Status.DISPUTED;
 
         // refund buyer (total cost)
         payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
