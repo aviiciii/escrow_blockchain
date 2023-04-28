@@ -247,6 +247,7 @@ contract Escrow {
         require(orders[_orderId].status == Status.OPEN || orders[_orderId].status == Status.CONFIRMED, "Order cannot be cancelled");
         
         if (orders[_orderId].buyer == msg.sender) {
+            // if buyer cancels order
             if (orders[_orderId].status == Status.OPEN) {
                 // update order status
                 orders[_orderId].status = Status.CANCELLED;
@@ -282,7 +283,8 @@ contract Escrow {
             } else {
                 revert("Order cannot be cancelled");
             }
-        } else {
+        } else if (orders[_orderId].seller == msg.sender) {
+            // if seller cancels order
             if (orders[_orderId].status == Status.OPEN) {
                 // update order status
                 orders[_orderId].status = Status.CANCELLED;
@@ -316,10 +318,11 @@ contract Escrow {
             } else {
                 revert("Order cannot be cancelled");
             }
+        } else {
+            revert("Order cannot be cancelled");
         }
-
-        
-
     }
+
+
 
 }
