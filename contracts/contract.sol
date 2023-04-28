@@ -51,15 +51,14 @@ contract Escrow {
     
     // balances in wallet (after transactions)
     uint256 public escrowBalance;
-    uint256 public shippingBalance;
 
 
     // products
-    uint256 public totalItems = 0;
-    uint256 public totalOrders = 0;
-    uint256 public totalConfirmed = 0;
-    uint256 public totalDisputed = 0;
-    uint256 public totalDelivered = 0;
+    uint256 totalItems = 0;
+    uint256 totalOrders = 0;
+    uint256 totalConfirmed = 0;
+    uint256 totalDisputed = 0;
+    uint256 totalDelivered = 0;
 
     
 
@@ -76,9 +75,9 @@ contract Escrow {
     } 
 
     // check contract balance
-    function checkBalance() public view returns (uint256) {
-        return (address(this).balance);
-    }
+    // function checkBalance() public view returns (uint256) {
+    //     return (address(this).balance);
+    // }
 
     // ITEMS-------------------------------------------------------------
 
@@ -392,5 +391,5 @@ contract Escrow {
 
 
 
-    
+
 }
