@@ -56,6 +56,7 @@ contract Escrow {
     uint256 public totalItems = 0;
     uint256 public totalConfirmed = 0;
     uint256 public totalDisputed = 0;
+    uint256 public totalDelivered = 0;
 
     
 
@@ -210,5 +211,35 @@ contract Escrow {
 
     }
 
+    // deliver order by shipper using order id
+    function deliveredOrder(uint256 _itemId) public {
+        require(orders[_itemId].item.itemId > 0, "Order does not exist");
+        require(orders[_itemId].item.itemId <= totalItems, "Order does not exist");
+        require(orders[_itemId].shipper == msg.sender, "Only shipper can deliver order");
+        require(orders[_itemId].status == Status.CONFIRMED, "Order is not confirmed");
+
+        // update order status
+        orders[_itemId].status = Status.DELIVERED;
+
+        // pay shipper
+        payable(orders[_itemId].shipper).transfer(orders[_itemId].item.shipping_amount);
+
+        // pay seller
+        payable(orders[_itemId].item.seller).transfer(orders[_itemId].item.amount);
+
+        // update escrow balance
+        escrowBalance += (orders[_itemId].item.amount * escrowFeePercent) / 100;
+
+        // update deposit
+        sellerDeposit -= orders[_itemId].item.amount;
+        buyerDeposit -= orders[_itemId].item.shipping_amount;
+
+
+        // update total confirmed
+        totalConfirmed--;
+
+        // update total delivered
+        totalDelivered++;
+    }
 
 }
