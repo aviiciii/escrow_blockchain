@@ -16,6 +16,7 @@ contract Escrow {
 
     // order struct
     struct OrderStruct {
+        uint256 orderId;
         ItemStruct item;
         address buyer;
         address seller;
@@ -54,6 +55,7 @@ contract Escrow {
 
     // products
     uint256 public totalItems = 0;
+    uint256 public totalOrders = 0;
     uint256 public totalConfirmed = 0;
     uint256 public totalDisputed = 0;
     uint256 public totalDelivered = 0;
@@ -116,18 +118,25 @@ contract Escrow {
 
         require(items[_itemId].itemId > 0, "Item does not exist");
         require(items[_itemId].itemId <= totalItems, "Item does not exist");
+        // buyer must not be seller
+        require(items[_itemId].seller != msg.sender, "Buyer cannot be seller");
 
         // calculate cost of the item + shipping + escrow fee
         uint256 total_cost = totalCost(_itemId);
 
         require(msg.value == total_cost, string(abi.encodePacked("Incorrect amount sent, please send ", total_cost, " wei")));
 
+        // order id
+        uint256 orderId = totalOrders + 1;
+
         // create order
-        orders[_itemId] = OrderStruct(items[_itemId], msg.sender, items[_itemId].seller, shipperAddress, Status.OPEN);
+        orders[orderId] = OrderStruct(orderId, items[_itemId], msg.sender, items[_itemId].seller, shipperAddress, Status.OPEN);
 
         // calculate buyer deposit
         buyerDeposit = msg.value;
 
+        // update total orders
+        totalOrders++;
 
         // return success message with item and amount
         emit OrderCreated(_itemId, msg.value);
@@ -136,6 +145,7 @@ contract Escrow {
     
     // temp struct to view order details
     struct OrderDetails {
+        uint orderId;
         uint256 itemId;
         uint256 amount;
         uint256 shipping_amount; 
@@ -146,35 +156,37 @@ contract Escrow {
         Status status;
     }
     // view order
-    function viewOrder(uint256 _itemId) public view returns (OrderDetails memory) {
+    function viewOrder(uint256 _orderId) public view returns (OrderDetails memory) {
         OrderDetails memory order = OrderDetails(
-            orders[_itemId].item.itemId,
-            orders[_itemId].item.amount,
-            orders[_itemId].item.shipping_amount,
-            orders[_itemId].item.timestamp,
-            orders[_itemId].item.seller,
-            orders[_itemId].buyer,
-            orders[_itemId].shipper,
-            orders[_itemId].status
+            orders[_orderId].orderId,
+            orders[_orderId].item.itemId,
+            orders[_orderId].item.amount,
+            orders[_orderId].item.shipping_amount,
+            orders[_orderId].item.timestamp,
+            orders[_orderId].item.seller,
+            orders[_orderId].buyer,
+            orders[_orderId].shipper,
+            orders[_orderId].status
         );
 
         return order;
     }
 
-
+    
     // confirm order by seller using order id by paying the shipping charges
-    function confirmOrder(uint256 _itemId) public payable {
-        require(orders[_itemId].item.itemId > 0, "Order does not exist");
-        require(orders[_itemId].item.itemId <= totalItems, "Order does not exist");
-        require(orders[_itemId].status == Status.OPEN, "Order is not open");
-        require(orders[_itemId].item.seller == msg.sender, "Only seller can confirm order");
+    function confirmOrder(uint256 _orderId) public payable {
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalOrders, "Order does not exist");
+
+        require(orders[_orderId].status == Status.OPEN, "Order is not open");
+        require(orders[_orderId].item.seller == msg.sender, "Only seller can confirm order");
 
 
         // check if shipping amount is paid
-        require(msg.value == orders[_itemId].item.shipping_amount, string(abi.encodePacked("Incorrect amount sent, please send ", orders[_itemId].item.shipping_amount, " wei")));
+        require(msg.value == orders[_orderId].item.shipping_amount, string(abi.encodePacked("Incorrect amount sent, please send ", orders[_orderId].item.shipping_amount, " wei")));
 
         // update order status
-        orders[_itemId].status = Status.CONFIRMED;
+        orders[_orderId].status = Status.CONFIRMED;
 
 
         // update seller deposit
@@ -185,54 +197,55 @@ contract Escrow {
     }
 
     // cancel order by buyer using order id
-    function cancelOrder(uint256 _itemId) public payable {
-        require(orders[_itemId].item.itemId > 0, "Order does not exist");
-        require(orders[_itemId].item.itemId <= totalItems, "Order does not exist");
-        require(orders[_itemId].buyer == msg.sender, "Only buyer can cancel order");
+    function cancelOrder(uint256 _orderId) public payable {
+        require(_orderId > 0, "Order does not exist");
+        require(orders[_orderId].item.itemId > 0, "Order does not exist");
+        require(orders[_orderId].item.itemId <= totalItems, "Order does not exist");
+        require(orders[_orderId].buyer == msg.sender, "Only buyer can cancel order");
 
         // update order status
-        orders[_itemId].status = Status.CANCELLED;
+        orders[_orderId].status = Status.CANCELLED;
 
 
         // total cost of item
-        uint256 total_cost = totalCost(_itemId);
+        uint256 total_cost = totalCost(_orderId);
 
         // update buyer deposit
         buyerDeposit -= total_cost;
 
         // refund buyer
-        payable(orders[_itemId].buyer).transfer(total_cost);
+        payable(orders[_orderId].buyer).transfer(total_cost);
 
         // update seller deposit
-        sellerDeposit -= orders[_itemId].item.shipping_amount;
+        sellerDeposit -= orders[_orderId].item.shipping_amount;
         
         // refund seller
-        payable(orders[_itemId].item.seller).transfer(orders[_itemId].item.shipping_amount);
+        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.shipping_amount);
 
     }
 
     // deliver order by shipper using order id
-    function deliveredOrder(uint256 _itemId) public {
-        require(orders[_itemId].item.itemId > 0, "Order does not exist");
-        require(orders[_itemId].item.itemId <= totalItems, "Order does not exist");
-        require(orders[_itemId].shipper == msg.sender, "Only shipper can deliver order");
-        require(orders[_itemId].status == Status.CONFIRMED, "Order is not confirmed");
+    function deliveredOrder(uint256 _orderId) public {
+        require(orders[_orderId].item.itemId > 0, "Order does not exist");
+        require(orders[_orderId].item.itemId <= totalItems, "Order does not exist");
+        require(orders[_orderId].shipper == msg.sender, "Only shipper can deliver order");
+        require(orders[_orderId].status == Status.CONFIRMED, "Order is not confirmed");
 
         // update order status
-        orders[_itemId].status = Status.DELIVERED;
+        orders[_orderId].status = Status.DELIVERED;
 
         // pay shipper
-        payable(orders[_itemId].shipper).transfer(orders[_itemId].item.shipping_amount);
+        payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
 
         // pay seller
-        payable(orders[_itemId].item.seller).transfer(orders[_itemId].item.amount);
+        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount);
 
         // update escrow balance
-        escrowBalance += (orders[_itemId].item.amount * escrowFeePercent) / 100;
+        escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
 
         // update deposit
-        sellerDeposit -= orders[_itemId].item.amount;
-        buyerDeposit -= orders[_itemId].item.shipping_amount;
+        sellerDeposit -= orders[_orderId].item.amount;
+        buyerDeposit -= orders[_orderId].item.shipping_amount;
 
 
         // update total confirmed
