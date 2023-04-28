@@ -34,7 +34,6 @@ contract Escrow {
         DISPUTED_BY_SELLER // SELLER MISTAKE
     }
 
-    
 
 
     // state variables
@@ -115,8 +114,6 @@ contract Escrow {
     // events
     event OrderCreated(uint256 itemId, uint256 amount);
 
-
-    
 
 
     // create order on item purchase
@@ -214,19 +211,17 @@ contract Escrow {
 
         // update order status
         orders[_orderId].status = Status.DELIVERED;
-
+        
         // pay shipper the shipping amount
         payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
 
         // pay seller the item amount and shipping amount (deposit)
         payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
-
-
+        
         // update deposit
         sellerDeposit -= orders[_orderId].item.shipping_amount;
         buyerDeposit -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
 
-        
         // update total confirmed
         totalConfirmed--;
 
@@ -287,7 +282,7 @@ contract Escrow {
             // if seller cancels order
             if (orders[_orderId].status == Status.OPEN) {
                 // update order status
-                orders[_orderId].status = Status.CANCELLED;
+                orders[_orderId].status = Status.REJECTED;
 
                 // refund buyer (total cost)
                 payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
@@ -300,7 +295,7 @@ contract Escrow {
 
             } else if (orders[_orderId].status == Status.CONFIRMED) {
                 // update order status
-                orders[_orderId].status = Status.CANCELLED;
+                orders[_orderId].status = Status.REJECTED;
 
                 // refund buyer (total cost)
                 payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
@@ -323,6 +318,30 @@ contract Escrow {
         }
     }
 
+    // dispute the order by buyer
+    function disputeOrder(uint256 _orderId) public payable {
+        // check if order exists
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalOrders, "Order does not exist");
+
+        // check if buyer
+        require(orders[_orderId].buyer == msg.sender, "Only buyer can dispute order");
+
+        // check current status open or confirmed
+        require(orders[_orderId].status == Status.OPEN || orders[_orderId].status == Status.CONFIRMED, "Order cannot be disputed");
+
+        // update order status
+        orders[_orderId].status = Status.DISPUTED_BY_BUYER;
+
+        // refund buyer (total cost)
+        payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
+
+        // update buyer deposit (total cost)
+        buyerDeposit -= totalCost(orders[_orderId].item.itemId);
+
+        // update escrow balance (escrow fee)
+        escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
+    }
 
 
 }
