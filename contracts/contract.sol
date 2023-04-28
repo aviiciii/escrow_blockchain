@@ -146,7 +146,6 @@ contract Escrow {
         emit OrderCreated(_itemId, msg.value);
     }
 
-    
     // temp struct to view order details
     struct OrderDetails {
         uint orderId;
@@ -204,7 +203,6 @@ contract Escrow {
     }
 
    
-
     // cancel the order
     function cancelOrder(uint256 _orderId) public payable {
         // check if order exists
@@ -412,16 +410,6 @@ contract Escrow {
             revert("Order cannot be resolved");
         }
     }
-
-
-
-
-
-
-
-
-
-
 
 
 }
