@@ -37,7 +37,7 @@ contract Escrow {
 
     // state variables
 
-    address public shipper;
+    address public shipperAddress;
     address public escrow;
 
     // Deposits
@@ -59,14 +59,14 @@ contract Escrow {
 
     
 
-    constructor (uint256 _escrowFee, address _shipper) {
+    constructor (uint256 _escrowFee, address _shipperAddress) {
         // constructor
         escrow = msg.sender;
         escrowFeePercent = _escrowFee;
         // escrowFeePercent = 5;
 
         // set the shipper address
-        shipper = _shipper;
+        shipperAddress = _shipperAddress;
 
 
     } 
@@ -107,16 +107,7 @@ contract Escrow {
     event OrderCreated(uint256 itemId, uint256 amount);
 
 
-    struct OrderDetails {
-        uint256 itemId;
-        uint256 amount;
-        uint256 shipping_amount; 
-        uint256 timestamp;
-        address seller;
-        address buyer;
-        address shipper;
-        Status status;
-    }
+    
 
 
     // create order on item purchase
@@ -131,7 +122,7 @@ contract Escrow {
         require(msg.value == total_cost, string(abi.encodePacked("Incorrect amount sent, please send ", total_cost, " wei")));
 
         // create order
-        orders[_itemId] = OrderStruct(items[_itemId], msg.sender, items[_itemId].seller, address(0), Status.OPEN);
+        orders[_itemId] = OrderStruct(items[_itemId], msg.sender, items[_itemId].seller, shipperAddress, Status.OPEN);
 
         // calculate buyer deposit
         buyerDeposit = msg.value;
@@ -141,8 +132,19 @@ contract Escrow {
         emit OrderCreated(_itemId, msg.value);
     }
 
-    // view order
     
+    // temp struct to view order details
+    struct OrderDetails {
+        uint256 itemId;
+        uint256 amount;
+        uint256 shipping_amount; 
+        uint256 timestamp;
+        address seller;
+        address buyer;
+        address shipper;
+        Status status;
+    }
+    // view order
     function viewOrder(uint256 _itemId) public view returns (OrderDetails memory) {
         OrderDetails memory order = OrderDetails(
             orders[_itemId].item.itemId,
@@ -173,8 +175,6 @@ contract Escrow {
         // update order status
         orders[_itemId].status = Status.CONFIRMED;
 
-        // update shipping balance
-        shippingBalance += orders[_itemId].item.shipping_amount;
 
         // update seller deposit
         sellerDeposit += msg.value;
