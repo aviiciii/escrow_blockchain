@@ -30,11 +30,12 @@ contract Escrow {
         CANCELLED,
         REJECTED,
         DELIVERED,
-        DISPUTED_BY_BUYER, // BUYER MISTAKE
-        DISPUTED_BY_SELLER // SELLER MISTAKE
+        COMPLETED,
+        DISPUTED,
+        DISPUTED_RESOLVED_BUYER_MISTAKE,
+        DISPUTED_RESOLVED_SELLER_MISTAKE
     }
 
-    
 
 
     // state variables
@@ -43,24 +44,23 @@ contract Escrow {
     address escrow;
 
     // Deposits
-    uint256 public buyerDeposit;
-    uint256 public sellerDeposit;
+    uint256 public depositBuyer;
+    uint256 public depositSeller;
 
     // fees
     uint256 escrowFeePercent;
     
     // balances in wallet (after transactions)
     uint256 public escrowBalance;
-    uint256 public shippingBalance;
 
 
     // products
-    uint256 public totalItems = 0;
-    uint256 public totalOrders = 0;
-    uint256 public totalConfirmed = 0;
-    uint256 public totalDisputed = 0;
-    uint256 public totalDelivered = 0;
-
+    uint256 private totalItems = 0;
+    uint256 totalOrders = 0;
+    uint256 totalConfirmed = 0;
+    uint256 totalDisputed = 0;
+    uint256 totalDelivered = 0;
+    uint256 totalCompleted = 0;
     
 
     constructor (uint256 _escrowFee, address _shipperAddress) {
@@ -76,9 +76,9 @@ contract Escrow {
     } 
 
     // check contract balance
-    function checkBalance() public view returns (uint256) {
-        return (address(this).balance);
-    }
+    // function checkBalance() public view returns (uint256) {
+    //     return (address(this).balance);
+    // }
 
     // ITEMS-------------------------------------------------------------
 
@@ -116,8 +116,6 @@ contract Escrow {
     event OrderCreated(uint256 itemId, uint256 amount);
 
 
-    
-
 
     // create order on item purchase
     function createOrder(uint256 _itemId) public payable {
@@ -139,7 +137,7 @@ contract Escrow {
         orders[orderId] = OrderStruct(orderId, items[_itemId], msg.sender, items[_itemId].seller, shipperAddress, Status.OPEN);
 
         // calculate buyer deposit
-        buyerDeposit = msg.value;
+        depositBuyer = msg.value;
 
         // update total orders
         totalOrders++;
@@ -148,7 +146,6 @@ contract Escrow {
         emit OrderCreated(_itemId, msg.value);
     }
 
-    
     // temp struct to view order details
     struct OrderDetails {
         uint orderId;
@@ -195,45 +192,17 @@ contract Escrow {
         orders[_orderId].status = Status.CONFIRMED;
 
         // update seller deposit
-        sellerDeposit += msg.value;
+        depositSeller += msg.value;
 
         // escrow balance from buyer deposit
         escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
-        buyerDeposit -= (orders[_orderId].item.amount * escrowFeePercent) / 100;
+        depositBuyer -= (orders[_orderId].item.amount * escrowFeePercent) / 100;
 
         // update total confirmed
         totalConfirmed++;
     }
 
-    // deliver order by shipper using order id
-    function deliveredOrder(uint256 _orderId) public payable {
-        require(_orderId > 0, "Order does not exist");
-        require(_orderId <= totalItems, "Order does not exist");
-        require(orders[_orderId].shipper == msg.sender, "Only shipper can deliver order");
-        require(orders[_orderId].status == Status.CONFIRMED, "Order is not confirmed");
-
-        // update order status
-        orders[_orderId].status = Status.DELIVERED;
-
-        // pay shipper the shipping amount
-        payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
-
-        // pay seller the item amount and shipping amount (deposit)
-        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
-
-
-        // update deposit
-        sellerDeposit -= orders[_orderId].item.shipping_amount;
-        buyerDeposit -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
-
-        
-        // update total confirmed
-        totalConfirmed--;
-
-        // update total delivered
-        totalDelivered++;
-    }
-
+   
     // cancel the order
     function cancelOrder(uint256 _orderId) public payable {
         // check if order exists
@@ -256,7 +225,7 @@ contract Escrow {
                 payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
 
                 // update buyer deposit (total cost)
-                buyerDeposit -= totalCost(orders[_orderId].item.itemId);
+                depositBuyer -= totalCost(orders[_orderId].item.itemId);
 
                 // update escrow balance (escrow fee)
                 escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
@@ -270,10 +239,10 @@ contract Escrow {
                 payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount);
 
                 // update buyer deposit (item amount + shipping amount)
-                buyerDeposit -= (orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
+                depositBuyer -= (orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
 
                 // update seller deposit (shipping amount)
-                sellerDeposit -= orders[_orderId].item.shipping_amount;
+                depositSeller -= orders[_orderId].item.shipping_amount;
 
                 // refund seller (shipping amount)
                 payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.shipping_amount);
@@ -287,30 +256,30 @@ contract Escrow {
             // if seller cancels order
             if (orders[_orderId].status == Status.OPEN) {
                 // update order status
-                orders[_orderId].status = Status.CANCELLED;
+                orders[_orderId].status = Status.REJECTED;
 
                 // refund buyer (total cost)
                 payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
 
                 // update buyer deposit (total cost)
-                buyerDeposit -= totalCost(orders[_orderId].item.itemId);
+                depositBuyer -= totalCost(orders[_orderId].item.itemId);
 
                 // no escrow fee
 
 
             } else if (orders[_orderId].status == Status.CONFIRMED) {
                 // update order status
-                orders[_orderId].status = Status.CANCELLED;
+                orders[_orderId].status = Status.REJECTED;
 
                 // refund buyer (total cost)
                 payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
 
                 // update buyer deposit (total cost)
-                buyerDeposit -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
+                depositBuyer -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
                 escrowBalance -= (orders[_orderId].item.amount * escrowFeePercent) / 100;
 
                 // update seller deposit (shipping amount)
-                sellerDeposit -= orders[_orderId].item.shipping_amount;
+                depositSeller -= orders[_orderId].item.shipping_amount;
 
                 // pay shipper the shipping amount from seller deposit
                 payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
@@ -323,6 +292,124 @@ contract Escrow {
         }
     }
 
+    // deliver order by shipper using order id
+    function deliveredOrder(uint256 _orderId) public {
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalItems, "Order does not exist");
+        require(orders[_orderId].shipper == msg.sender, "Only shipper can deliver order");
+        require(orders[_orderId].status == Status.CONFIRMED, "Order is not confirmed");
+
+        // update order status
+        orders[_orderId].status = Status.DELIVERED;
+        
+        // // pay shipper the shipping amount
+        // payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
+
+        // // pay seller the item amount and shipping amount (deposit)
+        // payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
+        
+        // // update deposit
+        // depositSeller -= orders[_orderId].item.shipping_amount;
+        // depositBuyer -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
+
+        // update total confirmed
+        totalConfirmed--;
+
+        // update total delivered
+        totalDelivered++;
+    }
+
+    // order received by buyer
+    function receivedOrder(uint256 _orderId) public {
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalItems, "Order does not exist");
+        require(orders[_orderId].buyer == msg.sender, "Only buyer can receive order");
+        require(orders[_orderId].status == Status.DELIVERED, "Order is not delivered");
+
+        // update order status
+        orders[_orderId].status = Status.COMPLETED;
+
+        // pay shipper the shipping amount
+        payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
+
+        // pay seller the item amount and shipping amount (deposit)
+        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
+        
+        // update deposits
+        depositSeller -= orders[_orderId].item.shipping_amount;
+        depositBuyer -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
+
+        // update variables
+        totalCompleted++;
+        totalDelivered--;
+        
+    }
+
+    // dispute the order by buyer
+    function disputeOrder(uint256 _orderId) public  {
+        // check if order exists
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalOrders, "Order does not exist");
+
+        // check if buyer
+        require(orders[_orderId].buyer == msg.sender, "Only buyer can dispute order");
+
+        // check current status open or confirmed
+        require(orders[_orderId].status == Status.DELIVERED, "Order cannot be disputed");
+
+        // update order status
+        orders[_orderId].status = Status.DISPUTED;
+    }
+
+    // resolve the dispute by shipper
+    function resolveDispute(uint256 _orderId, bool _buyerMistake, bool _sellerMistake) public payable {
+        // check if order exists
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalOrders, "Order does not exist");
+
+        // check if shipper
+        require(orders[_orderId].shipper == msg.sender, "Only shipper can resolve dispute");
+
+        // check current status open or confirmed
+        require(orders[_orderId].status == Status.DISPUTED, "Order cannot be resolved");
+
+        // only one mistake can be made
+        require(_buyerMistake != _sellerMistake, "Either seller or buyer mistake can be made");
+
+        // check if buyer or seller made mistake
+        if (_buyerMistake) {
+            // buyer mistake
+            orders[_orderId].status = Status.DISPUTED_RESOLVED_BUYER_MISTAKE;
+
+            // refund buyer (item amount)
+            payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount);
+            depositBuyer -= orders[_orderId].item.amount+orders[_orderId].item.shipping_amount;
+
+            // refund seller (shipping amount)
+            payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.shipping_amount);
+            depositSeller -= orders[_orderId].item.shipping_amount;
+
+            // pay shipper the shipping amount from buyer deposit
+            payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
+
+
+
+        } else if (_sellerMistake) {
+            // seller mistake
+            orders[_orderId].status = Status.DISPUTED_RESOLVED_SELLER_MISTAKE;
+            
+            // refund buyer (item amount + shipping amount)
+            payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
+            depositBuyer -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
+
+            // pay shipper the shipping amount from seller deposit
+            payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
+            depositSeller -= orders[_orderId].item.shipping_amount;
+
+        } else {
+            revert("Order cannot be resolved");
+        }
+    }
 
 
 }
