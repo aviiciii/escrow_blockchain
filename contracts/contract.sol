@@ -249,7 +249,7 @@ contract Escrow {
             payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
 
             // update buyer deposit (total cost)
-            buyerDeposit -= totalCost(_orderId);
+            buyerDeposit -= totalCost(orders[_orderId].item.itemId);
 
             // update escrow balance (escrow fee)
             escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
@@ -263,7 +263,7 @@ contract Escrow {
             payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount);
 
             // update buyer deposit (total cost)
-            buyerDeposit -= totalCost(_orderId);
+            buyerDeposit -= totalCost(orders[_orderId].item.itemId);
 
             // update seller deposit (shipping amount)
             sellerDeposit -= orders[_orderId].item.shipping_amount;
