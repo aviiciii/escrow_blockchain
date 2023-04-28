@@ -28,6 +28,7 @@ contract Escrow {
         OPEN,
         CONFIRMED,
         CANCELLED,
+        REJECTED,
         DELIVERED,
         DISPUTED_BY_BUYER, // BUYER MISTAKE
         DISPUTED_BY_SELLER // SELLER MISTAKE
@@ -73,6 +74,11 @@ contract Escrow {
 
 
     } 
+
+    // check contract balance
+    function checkBalance() public view returns (uint256) {
+        return (address(this).balance);
+    }
 
     // ITEMS-------------------------------------------------------------
 
@@ -199,34 +205,6 @@ contract Escrow {
         totalConfirmed++;
     }
 
-    // cancel order by buyer using order id
-    function cancelOrder(uint256 _orderId) public payable {
-        require(_orderId > 0, "Order does not exist");
-        require(orders[_orderId].item.itemId > 0, "Order does not exist");
-        require(orders[_orderId].item.itemId <= totalItems, "Order does not exist");
-        require(orders[_orderId].buyer == msg.sender, "Only buyer can cancel order");
-
-        // update order status
-        orders[_orderId].status = Status.CANCELLED;
-
-
-        // total cost of item
-        uint256 total_cost = totalCost(_orderId);
-
-        // update buyer deposit
-        buyerDeposit -= total_cost;
-
-        // refund buyer
-        payable(orders[_orderId].buyer).transfer(total_cost);
-
-        // update seller deposit
-        sellerDeposit -= orders[_orderId].item.shipping_amount;
-        
-        // refund seller
-        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.shipping_amount);
-
-    }
-
     // deliver order by shipper using order id
     function deliveredOrder(uint256 _orderId) public payable {
         require(_orderId > 0, "Order does not exist");
@@ -256,9 +234,95 @@ contract Escrow {
         totalDelivered++;
     }
 
-    // check contract balance
-    function checkBalance() public view returns (uint256) {
-        return (address(this).balance);
+    // cancel the order
+    function cancelOrder(uint256 _orderId) public payable {
+        // check if order exists
+        require(_orderId > 0, "Order does not exist");
+        require(_orderId <= totalOrders, "Order does not exist");
+
+        // check if buyer or seller
+        require(orders[_orderId].buyer == msg.sender || orders[_orderId].seller == msg.sender, "Only buyer or seller can cancel order");
+
+        // check current status open or confirmed
+        require(orders[_orderId].status == Status.OPEN || orders[_orderId].status == Status.CONFIRMED, "Order cannot be cancelled");
+        
+        if (orders[_orderId].buyer == msg.sender) {
+            // if buyer cancels order
+            if (orders[_orderId].status == Status.OPEN) {
+                // update order status
+                orders[_orderId].status = Status.CANCELLED;
+
+                // refund buyer (item amount + shipping amount)
+                payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
+
+                // update buyer deposit (total cost)
+                buyerDeposit -= totalCost(orders[_orderId].item.itemId);
+
+                // update escrow balance (escrow fee)
+                escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
+
+
+            } else if (orders[_orderId].status == Status.CONFIRMED) {
+                // update order status
+                orders[_orderId].status = Status.CANCELLED;
+
+                // refund buyer (item amount only)
+                payable(orders[_orderId].buyer).transfer(orders[_orderId].item.amount);
+
+                // update buyer deposit (item amount + shipping amount)
+                buyerDeposit -= (orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
+
+                // update seller deposit (shipping amount)
+                sellerDeposit -= orders[_orderId].item.shipping_amount;
+
+                // refund seller (shipping amount)
+                payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.shipping_amount);
+
+                // pay shipper the shipping amount from buyer deposit
+                payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
+            } else {
+                revert("Order cannot be cancelled");
+            }
+        } else if (orders[_orderId].seller == msg.sender) {
+            // if seller cancels order
+            if (orders[_orderId].status == Status.OPEN) {
+                // update order status
+                orders[_orderId].status = Status.CANCELLED;
+
+                // refund buyer (total cost)
+                payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
+
+                // update buyer deposit (total cost)
+                buyerDeposit -= totalCost(orders[_orderId].item.itemId);
+
+                // no escrow fee
+
+
+            } else if (orders[_orderId].status == Status.CONFIRMED) {
+                // update order status
+                orders[_orderId].status = Status.CANCELLED;
+
+                // refund buyer (total cost)
+                payable(orders[_orderId].buyer).transfer(totalCost(orders[_orderId].item.itemId));
+
+                // update buyer deposit (total cost)
+                buyerDeposit -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
+                escrowBalance -= (orders[_orderId].item.amount * escrowFeePercent) / 100;
+
+                // update seller deposit (shipping amount)
+                sellerDeposit -= orders[_orderId].item.shipping_amount;
+
+                // pay shipper the shipping amount from seller deposit
+                payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
+
+            } else {
+                revert("Order cannot be cancelled");
+            }
+        } else {
+            revert("Order cannot be cancelled");
+        }
     }
+
+
 
 }
