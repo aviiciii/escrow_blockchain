@@ -188,9 +188,12 @@ contract Escrow {
         // update order status
         orders[_orderId].status = Status.CONFIRMED;
 
-
         // update seller deposit
         sellerDeposit += msg.value;
+
+        // escrow balance from buyer deposit
+        escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
+        buyerDeposit -= (orders[_orderId].item.amount * escrowFeePercent) / 100;
 
         // update total confirmed
         totalConfirmed++;
@@ -234,22 +237,18 @@ contract Escrow {
         // update order status
         orders[_orderId].status = Status.DELIVERED;
 
-        // pay shipper
-        // check contract balance
-
+        // pay shipper the shipping amount
         payable(orders[_orderId].shipper).transfer(orders[_orderId].item.shipping_amount);
 
-        // pay seller
-        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount);
+        // pay seller the item amount and shipping amount (deposit)
+        payable(orders[_orderId].item.seller).transfer(orders[_orderId].item.amount + orders[_orderId].item.shipping_amount);
 
-        // update escrow balance
-        escrowBalance += (orders[_orderId].item.amount * escrowFeePercent) / 100;
 
         // update deposit
         sellerDeposit -= orders[_orderId].item.shipping_amount;
-        buyerDeposit -= orders[_orderId].item.amount;
+        buyerDeposit -= orders[_orderId].item.amount + orders[_orderId].item.shipping_amount;
 
-
+        
         // update total confirmed
         totalConfirmed--;
 
