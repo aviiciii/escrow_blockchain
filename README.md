@@ -16,7 +16,7 @@ The blockchain Escrow project provides a decentralized escrow service using smar
 
 ## Installation and Setup
 
-To run the blockchain escrow service, follow these steps:
+***To run the blockchain escrow service, follow these steps:***
 
 1. Go to [Remix IDE](https://remix.ethereum.org) or any other Ethereum development environment of your choice.
 2. Create a new workspace.
