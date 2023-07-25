@@ -12,7 +12,7 @@
 
 ## Introduction
 
-The blockchain escrow project provides a decentralized escrow service using smart contracts on the blockchain. It ensures the secure transfer of funds by acting as a trusted intermediary between buyers and sellers. The escrow service holds the funds until the specified conditions, defined in the smart contract, are met, providing assurance and protection for both parties involved in a transaction.
+The blockchain Escrow project provides a decentralized escrow service using smart contracts on the blockchain. It ensures the secure transfer of funds by acting as a trusted intermediary between buyers and sellers. The escrow service holds the funds until the specified conditions, defined in the smart contract, are met, providing assurance and protection for both parties involved in a transaction.
 
 ## Installation and Setup
 
@@ -27,7 +27,7 @@ To run the blockchain escrow service, follow these steps:
 
 ## Usage
 
-To use the blockchain escrow service, follow these steps:
+***To use the blockchain escrow service, follow these steps:***
 
 1. Ensure that the smart contract is deployed and running.
 2. Use the provided functions in the smart contract to perform escrow transactions.
