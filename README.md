@@ -40,4 +40,4 @@ Contributions to the blockchain escrow project are welcome! If you have suggesti
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). Please review the license file for more information.
+***This project is licensed under the [MIT License](LICENSE). Please review the license file for more information.***
