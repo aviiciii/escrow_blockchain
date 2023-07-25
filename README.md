@@ -1,6 +1,6 @@
 # Blockchain Escrow Project
 
-***This repository contains the backend code for an escrow service using smart contracts on the blockchain. The escrow service allows secure transactions by holding funds in escrow until the specified conditions are met.
+***This repository contains the backend code for an escrow service using smart contracts on the blockchain. The escrow service allows secure transactions by holding funds in escrow until the specified conditions are met.***
 
 ## Table of Contents
 
